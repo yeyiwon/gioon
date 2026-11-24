@@ -1,15 +1,14 @@
 "use client";
-import { useEffect, useState, type CSSProperties, type RefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { Canvas } from "@react-three/fiber";
-import { PerformanceMonitor, PerspectiveCamera, View } from "@react-three/drei";
+import { PerformanceMonitor, PerspectiveCamera } from "@react-three/drei";
 import type { Element } from "@/lib/saju/constants";
 import type { SockSpec } from "@/lib/fortune/daily";
 import { Burst, FitCamera, Gather, QualityCtx, Rig, Spinner, useAppear, useQuality, type Quality } from "./common";
 import { Character } from "./character";
-import { GiftBox, SockPair } from "./sock";
+import { GiftBox } from "./sock";
 import { kick, type Touch3D } from "./interact";
 import { useFrame } from "@react-three/fiber";
-import { useRef } from "react";
 import type * as THREE from "three";
 
 /** 오행별 림라이트·그림자·입자 색 */
@@ -22,11 +21,14 @@ const ELEMENT_LOOK: Record<Element, { rim: string; shadow: string; glow: string 
 };
 
 /**
- * 앱 전체가 공유하는 단 하나의 WebGL 캔버스.
- * 각 화면의 3D 영역은 drei View로 이 캔버스의 일부(시저 영역)에 그려진다.
+ * 3D 섬: 각 3D 영역이 자기 자리(DOM 흐름) 안에 캔버스를 갖는다.
+ * 고정 캔버스 하나를 스크롤 위치에 맞춰 옮기던 방식은 모바일에서 한 박자 늦게 따라왔다.
+ * 화면 밖이거나 탭이 숨겨지면 렌더링을 멈춘다.
  */
-export default function Stage({ quality, active }: { quality: Quality; active: boolean }) {
-  const [visible, setVisible] = useState(true);
+export function Island({ quality, className, style, children }: { quality: Quality; className?: string; style?: CSSProperties; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(true);
+  const [pageVisible, setPageVisible] = useState(true);
   const mobile = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   const deviceDpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
   const maxDpr = Math.min(deviceDpr, quality.tier === "low" ? 1.5 : mobile ? 2 : 2);
@@ -34,39 +36,42 @@ export default function Stage({ quality, active }: { quality: Quality; active: b
   const minDpr = Math.min(deviceDpr, 1.5);
   const [dpr, setDpr] = useState(maxDpr);
   useEffect(() => {
-    const on = () => setVisible(document.visibilityState === "visible");
-    const nav = () => kick(1200);
-    document.addEventListener("visibilitychange", on);
-    window.addEventListener("hashchange", nav);
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { rootMargin: "120px 0px" });
+    io.observe(el);
+    const vis = () => setPageVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", vis);
     return () => {
-      document.removeEventListener("visibilitychange", on);
-      window.removeEventListener("hashchange", nav);
+      io.disconnect();
+      document.removeEventListener("visibilitychange", vis);
     };
   }, []);
-  const loop = active && visible && quality.motion === "full" ? "always" : "demand";
+  const loop = !inView || !pageVisible ? "never" : quality.motion === "full" ? "always" : "demand";
   useEffect(() => {
     // demand 모드에서도 그림자·환경맵이 자리 잡을 때까지 몇 프레임은 그린다
-    kick(1200);
-  }, [loop, active]);
+    if (loop === "demand") kick(1000);
+  }, [loop]);
   return (
-    <Canvas
-      className="stage"
-      frameloop={loop}
-      dpr={dpr}
-      gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-      eventSource={typeof document !== "undefined" ? (document.getElementById("app") ?? undefined) : undefined}
-      style={{ position: "fixed", inset: 0, pointerEvents: "none" }}
-    >
-      <QualityCtx.Provider value={quality}>
-        <PerformanceMonitor
-          bounds={() => [45, 58]}
-          flipflops={3}
-          onDecline={() => setDpr((d) => Math.max(minDpr, d - 0.25))}
-          onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))}
-        />
-        <View.Port />
-      </QualityCtx.Provider>
-    </Canvas>
+    <div ref={ref} className={className} style={style}>
+      <Canvas
+        frameloop={loop}
+        dpr={dpr}
+        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+        // 입력은 바깥 DOM(Frame)이 받는다 → 세로 스크롤을 막지 않음
+        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+      >
+        <QualityCtx.Provider value={quality}>
+          <PerformanceMonitor
+            bounds={() => [45, 58]}
+            flipflops={3}
+            onDecline={() => setDpr((d) => Math.max(minDpr, d - 0.25))}
+            onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))}
+          />
+          {children}
+        </QualityCtx.Provider>
+      </Canvas>
+    </div>
   );
 }
 
@@ -99,7 +104,7 @@ export function HeroView({ element, introStart, touch, quality, className, style
   // 연출 시계는 3D가 실제로 첫 프레임을 그린 순간부터 잰다 (청크 로딩·셰이더 컴파일 시간 제외)
   const start = useRef(introStart > 0 ? -1 : 0);
   return (
-    <View className={className} style={style}>
+    <Island quality={quality} className={className} style={style}>
       <QualityCtx.Provider value={quality}>
         <PerspectiveCamera makeDefault position={[0, 0.8, 2.7]} fov={30} />
         <FitCamera base={2.7} y={0.8} target={0.82} lookY={0.5} />
@@ -111,14 +116,14 @@ export function HeroView({ element, introStart, touch, quality, className, style
         </Appear>
         <Burst touch={touch} color={look.glow} y={0.6} />
       </QualityCtx.Provider>
-    </View>
+    </Island>
   );
 }
 
 /** 오늘의 양말 언박싱 */
 export function GiftView({ spec, ribbon, box, openAt, touch, quality, className, style }: ViewBase & { spec: SockSpec; ribbon: string; box: string; openAt: number | null }) {
   return (
-    <View className={className} style={style}>
+    <Island quality={quality} className={className} style={style}>
       <QualityCtx.Provider value={quality}>
         <PerspectiveCamera makeDefault position={[0, 0.9, 3.7]} fov={30} />
         <FitCamera base={4.1} y={0.7} target={1} lookY={0.12} />
@@ -128,7 +133,7 @@ export function GiftView({ spec, ribbon, box, openAt, touch, quality, className,
         </Spinner>
         <Burst touch={touch} color={ribbon} y={0.7} />
       </QualityCtx.Provider>
-    </View>
+    </Island>
   );
 }
 
@@ -136,7 +141,7 @@ export function GiftView({ spec, ribbon, box, openAt, touch, quality, className,
 export function CharacterView({ element, touch, quality, className, style }: ViewBase & { element: Element }) {
   const look = ELEMENT_LOOK[element];
   return (
-    <View className={className} style={style}>
+    <Island quality={quality} className={className} style={style}>
       <QualityCtx.Provider value={quality}>
         <PerspectiveCamera makeDefault position={[0, 0.9, 3.2]} fov={30} />
         <FitCamera base={3.2} y={0.9} target={0.9} lookY={0.46} />
@@ -146,7 +151,7 @@ export function CharacterView({ element, touch, quality, className, style }: Vie
         </Pop>
         <Burst touch={touch} color={look.glow} y={0.6} />
       </QualityCtx.Provider>
-    </View>
+    </Island>
   );
 }
 
@@ -169,7 +174,7 @@ function Pop({ children }: { children: React.ReactNode }) {
 export function LineupView({ touch, quality, className, style }: ViewBase) {
   const order: Element[] = ["wood", "fire", "earth", "metal", "water"];
   return (
-    <View className={className} style={style}>
+    <Island quality={quality} className={className} style={style}>
       <QualityCtx.Provider value={quality}>
         <PerspectiveCamera makeDefault position={[0, 1.1, 6]} fov={28} />
         <FitCamera base={4.6} y={1.0} target={2.1} lookY={0.5} />
@@ -182,7 +187,7 @@ export function LineupView({ touch, quality, className, style }: ViewBase) {
           </group>
         ))}
       </QualityCtx.Provider>
-    </View>
+    </Island>
   );
 }
 
@@ -194,34 +199,6 @@ function Bob({ i, children }: { i: number; children: React.ReactNode }) {
     if (!g.current || motion !== "full") return;
     const t = (clock.elapsedTime * 0.9 - i * 0.18) % 2.4;
     g.current.position.y = t > 0 && t < 0.4 ? Math.sin((t / 0.4) * Math.PI) * 0.18 : 0;
-  });
-  return <group ref={g}>{children}</group>;
-}
-
-/** 수집함 칸 하나: 그림자·환경맵 없이 가볍게, 천천히 흔들리는 양말 한 켤레 */
-export function SockThumbView({ spec, quality, className, style, seed = 0 }: { spec: SockSpec; quality: Quality; className?: string; style?: CSSProperties; seed?: number }) {
-  return (
-    <View className={className} style={style}>
-      <QualityCtx.Provider value={quality}>
-        <PerspectiveCamera makeDefault position={[0, 0.05, 2.85]} fov={30} />
-        <hemisphereLight args={["#ffffff", "#c9ccd8", 1.1]} />
-        <directionalLight position={[2, 3, 3]} intensity={1.6} />
-        <Sway seed={seed}>
-          <SockPair spec={spec} lite />
-        </Sway>
-      </QualityCtx.Provider>
-    </View>
-  );
-}
-
-function Sway({ seed, children }: { seed: number; children: React.ReactNode }) {
-  const g = useRef<THREE.Group>(null);
-  const { motion } = useQuality();
-  useFrame(({ clock }) => {
-    if (!g.current || motion !== "full") return;
-    const t = clock.elapsedTime + seed;
-    g.current.rotation.z = Math.sin(t * 0.8) * 0.03;
-    g.current.position.y = Math.sin(t * 1.1) * 0.015;
   });
   return <group ref={g}>{children}</group>;
 }

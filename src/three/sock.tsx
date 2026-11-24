@@ -49,7 +49,7 @@ export function sockGeometry(shape: SockSpec["shape"]) {
   return g;
 }
 
-function shade(hex: string, amt: number) {
+export function shade(hex: string, amt: number) {
   const c = new THREE.Color(hex);
   const hsl = { h: 0, s: 0, l: 0 };
   c.getHSL(hsl);
@@ -189,7 +189,7 @@ export function knitBump() {
 
 /** 같은 길이의 양말은 지오메트리를 공유한다 (수집함에 여러 켤레가 떠도 메시 하나) */
 const geoCache = new Map<SockSpec["shape"], THREE.BufferGeometry>();
-function cachedGeometry(shape: SockSpec["shape"]) {
+export function cachedGeometry(shape: SockSpec["shape"]) {
   let g = geoCache.get(shape);
   if (!g) {
     g = sockGeometry(shape);

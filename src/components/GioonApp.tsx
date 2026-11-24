@@ -1,5 +1,4 @@
 "use client";
-import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { ELEMENT_INFO, type Element } from "@/lib/saju/constants";
@@ -15,7 +14,6 @@ import Settings from "./screens/Settings";
 import type { Quality } from "@/three/common";
 import { EnvCtx, type Screen } from "./env";
 
-const Stage = dynamic(() => import("@/three/views"), { ssr: false });
 
 const SCREENS: Screen[] = ["today", "chart", "calendar", "shelf", "settings"];
 
@@ -107,7 +105,6 @@ export default function GioonApp() {
 
   if (!mounted) return <div id="app" />;
 
-  const active3d = !profile || screen === "today" || screen === "chart" || screen === "calendar" || screen === "shelf";
   let body: ReactNode;
   if (!profile) body = <Onboarding />;
   else
@@ -138,7 +135,6 @@ export default function GioonApp() {
             {profile && <Nav screen={screen} go={go} />}
           </div>
         </LayoutGroup>
-        {quality && <Stage quality={quality} active={active3d} />}
       </EnvCtx.Provider>
     </MotionConfig>
   );

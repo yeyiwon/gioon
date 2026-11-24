@@ -62,6 +62,30 @@ export type Step = (typeof STEPS)[number];
 export function StepFields({ step, draft, set }: { step: Step; draft: Draft; set: (d: Draft) => void }) {
   const b = draft.birth;
   const setB = (p: Partial<BirthInput>) => set({ ...draft, birth: { ...b, ...p } });
+  // 시각: 오전/오후 + 시(1~12) + 분. 시만 적으면 0분으로 본다
+  const init24 = b.timeMode === "exact" && b.hour !== null && b.hour >= 0 ? b.hour : null;
+  const [ampm, setAmpm] = useState<"am" | "pm">(init24 !== null && init24 >= 12 ? "pm" : "am");
+  const [hh, setHh] = useState(init24 === null ? "" : String(init24 % 12 === 0 ? 12 : init24 % 12));
+  const [mm, setMm] = useState(init24 === null ? "" : String(b.minute ?? 0).padStart(2, "0"));
+  const [timeErr, setTimeErr] = useState("");
+  const updateTime = (ap: "am" | "pm", h: string, m: string) => {
+    setAmpm(ap);
+    setHh(h);
+    setMm(m);
+    if (!h && !m) {
+      setTimeErr("");
+      return setB({ timeMode: undefined, hour: null, minute: null });
+    }
+    const hn = +h;
+    const mn = m ? +m : 0;
+    if (!h || hn < 1 || hn > 12 || mn > 59) {
+      setTimeErr(!h ? "시를 입력해 주세요" : hn < 1 || hn > 12 ? "시는 1~12로 입력해 주세요" : "분은 0~59로 입력해 주세요");
+      return setB({ timeMode: "exact", hour: -1, minute: null }); // 다음 단계 막기
+    }
+    setTimeErr("");
+    const h24 = ap === "am" ? (hn === 12 ? 0 : hn) : hn === 12 ? 12 : hn + 12;
+    setB({ timeMode: "exact", hour: h24, minute: mn });
+  };
   const [dateDigits, setDateDigits] = useState(
     b.year ? `${b.year}${String(b.month).padStart(2, "0")}${String(b.day).padStart(2, "0")}` : "",
   );
@@ -144,24 +168,31 @@ export function StepFields({ step, draft, set }: { step: Step; draft: Draft; set
       );
     case "time": {
       const mode = b.timeMode ?? (b.hour === null ? undefined : "exact");
-      const exactVal = mode === "exact" && b.hour !== null && b.hour >= 0 ? `${String(b.hour).padStart(2, "0")}:${String(b.minute ?? 0).padStart(2, "0")}` : "";
       const fallback = mode === "unknown" ? -1 : mode === "sijin" ? SIJIN.findIndex((x) => x.h === b.hour) : Number.NaN; // 아직 안 고름
       return (
         <div style={{ display: "grid", gap: 16 }}>
-          <label className="field">
+          <div className="field">
             <span className="meta">태어난 시각</span>
-            <input
-              type="time"
-              className="input big-input time-input"
-              aria-label="태어난 시각"
-              value={exactVal}
-              onChange={(e) => {
-                const [h, m] = e.target.value.split(":").map(Number);
-                if (e.target.value && !Number.isNaN(h)) setB({ timeMode: "exact", hour: h, minute: m || 0 });
-                else setB({ timeMode: undefined, hour: null, minute: null });
-              }}
-            />
-          </label>
+            <div className="tm">
+              <div className="seg tm-ampm" role="group" aria-label="오전 오후">
+                {(["am", "pm"] as const).map((v) => (
+                  <button key={v} type="button" aria-pressed={ampm === v} onClick={() => updateTime(v, hh, mm)}>
+                    {ampm === v && <motion.span layoutId="seg-ampm" className="seg-thumb" transition={{ type: "spring", stiffness: 500, damping: 36 }} />}
+                    {v === "am" ? "오전" : "오후"}
+                  </button>
+                ))}
+              </div>
+              <label className="tm-field">
+                <input className="input big-input" inputMode="numeric" placeholder="2" aria-label="시" value={hh} onChange={(e) => updateTime(ampm, e.target.value.replace(/\D/g, "").slice(0, 2), mm)} />
+                <span>시</span>
+              </label>
+              <label className="tm-field">
+                <input className="input big-input" inputMode="numeric" placeholder="05" aria-label="분" value={mm} onChange={(e) => updateTime(ampm, hh, e.target.value.replace(/\D/g, "").slice(0, 2))} />
+                <span>분</span>
+              </label>
+            </div>
+            {timeErr && <span className="meta" style={{ color: "#e0245e", fontWeight: 700 }}>{timeErr}</span>}
+          </div>
           <div className="field">
             <span className="meta">정확한 시각을 모르면</span>
             <Picker
@@ -169,9 +200,13 @@ export function StepFields({ step, draft, set }: { step: Step; draft: Draft; set
               value={fallback}
               placeholder="시간대로 고르기 · 모름"
               cols={1}
-              onChange={(v) =>
-                v === -1 ? setB({ timeMode: "unknown", hour: null, minute: null }) : setB({ timeMode: "sijin", hour: SIJIN[v].h, minute: 30 })
-              }
+              onChange={(v) => {
+                setHh("");
+                setMm("");
+                setTimeErr("");
+                if (v === -1) setB({ timeMode: "unknown", hour: null, minute: null });
+                else setB({ timeMode: "sijin", hour: SIJIN[v].h, minute: 30 });
+              }}
               options={[{ v: -1, l: "모름 (시주 없이 계산)" }, ...SIJIN.map((sj, i) => ({ v: i, l: `${sj.range} · ${sj.name}` }))]}
             />
           </div>

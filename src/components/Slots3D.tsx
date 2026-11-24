@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { Element } from "@/lib/saju/constants";
 import type { SockSpec } from "@/lib/fortune/daily";
 import { useTouch3D } from "@/three/interact";
@@ -10,7 +10,6 @@ import { MascotArt, GiftArt, SockArt } from "./ItemArt";
 const HeroView = dynamic(() => import("@/three/views").then((m) => m.HeroView), { ssr: false });
 const GiftView = dynamic(() => import("@/three/views").then((m) => m.GiftView), { ssr: false });
 const CharacterView = dynamic(() => import("@/three/views").then((m) => m.CharacterView), { ssr: false });
-const SockThumbView = dynamic(() => import("@/three/views").then((m) => m.SockThumbView), { ssr: false });
 const LineupView = dynamic(() => import("@/three/views").then((m) => m.LineupView), { ssr: false });
 
 const fill: CSSProperties = { position: "absolute", inset: 0 };
@@ -124,8 +123,19 @@ export function LineupSlot({ className, style }: { className?: string; style?: C
   );
 }
 
-export function SockThumbSlot({ spec, seed, className, style }: { spec: SockSpec; seed?: number; className?: string; style?: CSSProperties }) {
+export function SockThumbSlot({ spec, className }: { spec: SockSpec; seed?: number; className?: string }) {
   const { quality } = useEnv();
-  if (!quality) return <SockArt spec={spec} size={46} />;
-  return <SockThumbView spec={spec} seed={seed} quality={quality} className={className} style={style} />;
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!quality) return;
+    let alive = true;
+    // 3D 모듈은 필요할 때만 불러온다
+    import("@/three/snapshot").then((m) => alive && setSrc(m.sockThumb(spec)));
+    return () => {
+      alive = false;
+    };
+  }, [spec, quality]);
+  if (!quality || !src) return <span className={className} style={{ display: "grid", placeItems: "center" }}><SockArt spec={spec} size={46} /></span>;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img className={className} src={src} alt="" draggable={false} style={{ objectFit: "contain", width: "100%", height: "100%" }} />;
 }
