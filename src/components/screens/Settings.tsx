@@ -4,7 +4,6 @@ import { getState, resetAll, setState, useAppState } from "@/lib/store";
 import { Sheet } from "../Sheet";
 import { IconChevron } from "../icons";
 import { STEPS, STEP_COPY, StepFields, timeLabel, useDraftCheck, type Draft } from "../ProfileForm";
-import { useEnv } from "../env";
 
 function ProfileEditor({ onDone }: { onDone: () => void }) {
   const p = getState().profile!;
@@ -36,7 +35,7 @@ function ProfileEditor({ onDone }: { onDone: () => void }) {
 }
 
 export default function Settings() {
-  const { go } = useEnv();
+
   const profile = useAppState((s) => s.profile);
   const [sheet, setSheet] = useState<null | "profile" | "about" | "reset">(null);
 
@@ -44,10 +43,7 @@ export default function Settings() {
     <div className="screen settings">
       <style>{css}</style>
       <header className="topbar">
-        <button className="icon-btn" onClick={() => go("today")} aria-label="뒤로">
-          <IconChevron dir="left" />
-        </button>
-        <h1 className="section-title" style={{ flex: 1, marginLeft: 4 }}>
+        <h1 className="h-lg" style={{ margin: 0 }}>
           설정
         </h1>
       </header>
@@ -56,7 +52,7 @@ export default function Settings() {
         <h2 className="set-label">사주 프로필</h2>
         <button className="row set-row" onClick={() => setSheet("profile")}>
           <span style={{ flex: 1, textAlign: "left" }}>
-            {profile?.name || "이름 없음"}
+            {profile?.name || "내 프로필"}
             <span className="meta" style={{ display: "block" }}>
               {profile?.birth.calendar === "lunar" ? "음력 " : ""}
               {profile?.birth.year}.{profile?.birth.month}.{profile?.birth.day}
@@ -137,7 +133,6 @@ export default function Settings() {
 }
 
 const css = `
-.settings { padding-bottom: calc(var(--safe-b) + 48px); }
 .set-group { margin-top: 32px; }
 .set-label { font-size: 13px; font-weight: 800; color: var(--ink-3); margin: 0 0 4px; }
 .set-row { width: 100%; text-align: left; }

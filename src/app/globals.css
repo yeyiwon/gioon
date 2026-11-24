@@ -236,8 +236,8 @@ button {
   bottom: 0;
   z-index: 30;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  padding: 6px 8px calc(var(--safe-b) + 6px);
+  grid-template-columns: repeat(5, 1fr);
+  padding: 6px 4px calc(var(--safe-b) + 6px);
   background: rgba(255, 255, 255, 0.96);
   border-top: 1px solid var(--line);
   backdrop-filter: blur(12px);
@@ -459,7 +459,7 @@ button {
     right: auto;
     bottom: 16px;
     transform: translateX(-50%);
-    width: 400px;
+    width: 480px;
     border-radius: 22px;
     border: 1px solid var(--line);
     padding: 6px;

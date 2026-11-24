@@ -9,7 +9,7 @@ import { josa } from "@/lib/fortune/daily";
 import { HeroSlot, GiftSlot } from "../Slots3D";
 import { Sheet } from "../Sheet";
 import { SockArt, CharmArt } from "../ItemArt";
-import { IconChevron, IconSettings } from "../icons";
+import { IconChevron } from "../icons";
 import { useEnv } from "../env";
 
 // 개발 중 오행별 3D 확인용: ?el=fire (프로덕션 빌드에선 무시)
@@ -159,9 +159,6 @@ export default function Today({ date }: { date: string }) {
             {f.pillar.branch})
           </p>
         </div>
-        <button className="icon-btn" aria-label="설정" onClick={() => go("settings")}>
-          <IconSettings />
-        </button>
       </header>
 
       <div className="today-grid">

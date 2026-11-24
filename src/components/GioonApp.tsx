@@ -5,7 +5,7 @@ import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react
 import { ELEMENT_INFO, type Element } from "@/lib/saju/constants";
 import { detectTier, useFortune, useMotionLevel, useToday, type GpuTier } from "@/lib/hooks";
 import { useAppState } from "@/lib/store";
-import { IconCalendar, IconPillars, IconShelf, IconToday } from "./icons";
+import { IconCalendar, IconPillars, IconSettings, IconShelf, IconToday } from "./icons";
 import Onboarding from "./Onboarding";
 import Today from "./screens/Today";
 import MyChart from "./screens/MyChart";
@@ -33,6 +33,7 @@ const NAV: { id: Screen; label: string; Icon: typeof IconToday }[] = [
   { id: "chart", label: "사주", Icon: IconPillars },
   { id: "calendar", label: "달력", Icon: IconCalendar },
   { id: "shelf", label: "수집함", Icon: IconShelf },
+  { id: "settings", label: "설정", Icon: IconSettings },
 ];
 
 function Nav({ screen, go }: { screen: Screen; go: (s: Screen) => void }) {
@@ -134,7 +135,7 @@ export default function GioonApp() {
         <LayoutGroup>
           <div id="app">
             {body}
-            {profile && screen !== "settings" && <Nav screen={screen} go={go} />}
+            {profile && <Nav screen={screen} go={go} />}
           </div>
         </LayoutGroup>
         {quality && <Stage quality={quality} active={active3d} />}
