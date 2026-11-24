@@ -30,18 +30,18 @@ function Seg<T extends string>({ value, options, onChange, id }: { value: T; opt
 const fmtDate = (d: string) => (d.length > 6 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6)}` : d.length > 4 ? `${d.slice(0, 4)}.${d.slice(4)}` : d);
 /** 시진: 한국 표준시 기준 30분 경계. 대표 시각은 구간 한가운데(지방시 보정 ±40분에도 같은 시진) */
 export const SIJIN = [
-  { name: "자시", animal: "쥐", range: "밤 11:30 ~ 1:30", h: 0 },
-  { name: "축시", animal: "소", range: "새벽 1:30 ~ 3:30", h: 2 },
-  { name: "인시", animal: "호랑이", range: "새벽 3:30 ~ 5:30", h: 4 },
-  { name: "묘시", animal: "토끼", range: "아침 5:30 ~ 7:30", h: 6 },
-  { name: "진시", animal: "용", range: "아침 7:30 ~ 9:30", h: 8 },
-  { name: "사시", animal: "뱀", range: "오전 9:30 ~ 11:30", h: 10 },
-  { name: "오시", animal: "말", range: "낮 11:30 ~ 1:30", h: 12 },
-  { name: "미시", animal: "양", range: "오후 1:30 ~ 3:30", h: 14 },
-  { name: "신시", animal: "원숭이", range: "오후 3:30 ~ 5:30", h: 16 },
-  { name: "유시", animal: "닭", range: "저녁 5:30 ~ 7:30", h: 18 },
-  { name: "술시", animal: "개", range: "저녁 7:30 ~ 9:30", h: 20 },
-  { name: "해시", animal: "돼지", range: "밤 9:30 ~ 11:30", h: 22 },
+  { name: "자시", animal: "쥐", range: "밤 11:30 ~ 1:30", short: "23:30 – 01:30", h: 0 },
+  { name: "축시", animal: "소", range: "새벽 1:30 ~ 3:30", short: "01:30 – 03:30", h: 2 },
+  { name: "인시", animal: "호랑이", range: "새벽 3:30 ~ 5:30", short: "03:30 – 05:30", h: 4 },
+  { name: "묘시", animal: "토끼", range: "아침 5:30 ~ 7:30", short: "05:30 – 07:30", h: 6 },
+  { name: "진시", animal: "용", range: "아침 7:30 ~ 9:30", short: "07:30 – 09:30", h: 8 },
+  { name: "사시", animal: "뱀", range: "오전 9:30 ~ 11:30", short: "09:30 – 11:30", h: 10 },
+  { name: "오시", animal: "말", range: "낮 11:30 ~ 1:30", short: "11:30 – 13:30", h: 12 },
+  { name: "미시", animal: "양", range: "오후 1:30 ~ 3:30", short: "13:30 – 15:30", h: 14 },
+  { name: "신시", animal: "원숭이", range: "오후 3:30 ~ 5:30", short: "15:30 – 17:30", h: 16 },
+  { name: "유시", animal: "닭", range: "저녁 5:30 ~ 7:30", short: "17:30 – 19:30", h: 18 },
+  { name: "술시", animal: "개", range: "저녁 7:30 ~ 9:30", short: "19:30 – 21:30", h: 20 },
+  { name: "해시", animal: "돼지", range: "밤 9:30 ~ 11:30", short: "21:30 – 23:30", h: 22 },
 ];
 
 /** 프로필에 표시할 태어난 시간 */
@@ -54,7 +54,6 @@ export function timeLabel(b: BirthInput) {
   return `${String(b.hour).padStart(2, "0")}:${String(b.minute ?? 0).padStart(2, "0")}`;
 }
 
-const fmtTime = (d: string) => (d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d);
 
 export const STEPS = ["name", "date", "time", "place", "more"] as const;
 export type Step = (typeof STEPS)[number];
@@ -65,9 +64,6 @@ export function StepFields({ step, draft, set }: { step: Step; draft: Draft; set
   const setB = (p: Partial<BirthInput>) => set({ ...draft, birth: { ...b, ...p } });
   const [dateDigits, setDateDigits] = useState(
     b.year ? `${b.year}${String(b.month).padStart(2, "0")}${String(b.day).padStart(2, "0")}` : "",
-  );
-  const [timeDigits, setTimeDigits] = useState(
-    b.timeMode === "exact" && b.hour !== null && b.hour >= 0 ? `${String(b.hour).padStart(2, "0")}${String(b.minute ?? 0).padStart(2, "0")}` : "",
   );
 
   switch (step) {
@@ -148,58 +144,37 @@ export function StepFields({ step, draft, set }: { step: Step; draft: Draft; set
       );
     case "time": {
       const mode = b.timeMode ?? (b.hour === null ? undefined : "exact");
-      const partial = timeDigits.length > 0 && timeDigits.length < 4;
-      const bad = timeDigits.length === 4 && (+timeDigits.slice(0, 2) > 23 || +timeDigits.slice(2) > 59);
+      const exactVal = mode === "exact" && b.hour !== null && b.hour >= 0 ? `${String(b.hour).padStart(2, "0")}:${String(b.minute ?? 0).padStart(2, "0")}` : "";
+      const fallback = mode === "unknown" ? -1 : mode === "sijin" ? SIJIN.findIndex((x) => x.h === b.hour) : Number.NaN; // 아직 안 고름
       return (
-        <div style={{ display: "grid", gap: 10 }}>
-          <button type="button" className="sj-unknown" aria-pressed={mode === "unknown"} onClick={() => setB({ timeMode: "unknown", hour: null, minute: null })}>
-            태어난 시간을 몰라요
-          </button>
-          <div className="sj-grid" role="radiogroup" aria-label="태어난 시간대">
-            {SIJIN.map((sj) => (
-              <button
-                key={sj.name}
-                type="button"
-                role="radio"
-                className="sj"
-                aria-checked={mode === "sijin" && b.hour === sj.h}
-                onClick={() => setB({ timeMode: "sijin", hour: sj.h, minute: 30 })}
-              >
-                <b>{sj.range}</b>
-                <small>
-                  {sj.name} · {sj.animal}
-                </small>
-              </button>
-            ))}
+        <div style={{ display: "grid", gap: 16 }}>
+          <label className="field">
+            <span className="meta">태어난 시각</span>
+            <input
+              type="time"
+              className="input big-input time-input"
+              aria-label="태어난 시각"
+              value={exactVal}
+              onChange={(e) => {
+                const [h, m] = e.target.value.split(":").map(Number);
+                if (e.target.value && !Number.isNaN(h)) setB({ timeMode: "exact", hour: h, minute: m || 0 });
+                else setB({ timeMode: undefined, hour: null, minute: null });
+              }}
+            />
+          </label>
+          <div className="field">
+            <span className="meta">정확한 시각을 모르면</span>
+            <Picker
+              label="태어난 시간대"
+              value={fallback}
+              placeholder="시간대로 고르기 · 모름"
+              cols={1}
+              onChange={(v) =>
+                v === -1 ? setB({ timeMode: "unknown", hour: null, minute: null }) : setB({ timeMode: "sijin", hour: SIJIN[v].h, minute: 30 })
+              }
+              options={[{ v: -1, l: "모름 (시주 없이 계산)" }, ...SIJIN.map((sj, i) => ({ v: i, l: `${sj.range} · ${sj.name}` }))]}
+            />
           </div>
-          {mode !== "exact" ? (
-            <button type="button" className="btn-text" style={{ justifySelf: "start" }} onClick={() => setB({ timeMode: "exact", hour: -1, minute: null })}>
-              정확한 시각을 알아요
-            </button>
-          ) : (
-            <div className="field">
-              <span className="meta">정확한 시각 (24시간, 4자리)</span>
-              <input
-                className="input big-input"
-                inputMode="numeric"
-                placeholder="예: 오후 2시 5분 → 1405"
-                aria-label="태어난 시각 4자리"
-                autoFocus
-                value={fmtTime(timeDigits)}
-                onChange={(e) => {
-                  const d = e.target.value.replace(/\D/g, "").slice(0, 4);
-                  setTimeDigits(d);
-                  if (d.length === 4) setB({ timeMode: "exact", hour: +d.slice(0, 2), minute: +d.slice(2) });
-                  else setB({ timeMode: "exact", hour: -1, minute: null }); // 입력 중 → 다음 단계 막기
-                }}
-              />
-              {(partial || bad) && (
-                <span className="meta" style={{ color: "#e0245e", fontWeight: 700 }}>
-                  {bad ? "00:00~23:59 사이로 입력해 주세요" : "4자리로 입력해 주세요"}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       );
     }
@@ -260,7 +235,7 @@ export function useDraftCheck(draft: Draft) {
 export const STEP_COPY: Record<Step, { title: string; sub: string }> = {
   name: { title: "닉네임 (선택)", sub: "화면에만 표시돼요. 비워 둬도 괜찮아요" },
   date: { title: "생년월일", sub: "숫자 8자리로 입력하세요" },
-  time: { title: "태어난 시간", sub: "대략 어느 시간대였는지 골라 주세요" },
+  time: { title: "태어난 시간", sub: "정확한 시각을 알면 입력하고, 모르면 시간대를 골라 주세요" },
   place: { title: "태어난 지역", sub: "가장 가까운 도시를 고르세요" },
   more: { title: "성별 (선택)", sub: "지금은 운세 결과에 영향이 없어요" },
 };
@@ -363,7 +338,9 @@ function Picker<T extends number>({
   onChange,
   cols = 6,
   disabled,
+  placeholder = "선택",
 }: {
+  placeholder?: string;
   label: string;
   value: T;
   options: { v: T; l: string }[];
@@ -375,8 +352,8 @@ function Picker<T extends number>({
   const cur = options.find((o) => o.v === value);
   return (
     <>
-      <button type="button" className="input picker-btn" disabled={disabled} onClick={() => setOpen(true)} aria-label={`${label}: ${cur?.l ?? "선택"}`} aria-haspopup="dialog">
-        <span>{cur?.l ?? "선택"}</span>
+      <button type="button" className="input picker-btn" data-empty={!cur} disabled={disabled} onClick={() => setOpen(true)} aria-label={`${label}: ${cur?.l ?? placeholder}`} aria-haspopup="dialog">
+        <span>{cur?.l ?? placeholder}</span>
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title={label}>
         <div className="picker-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }} role="listbox" aria-label={label}>

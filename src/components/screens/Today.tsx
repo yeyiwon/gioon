@@ -8,7 +8,7 @@ import { CHARM_KO, SOCK_PATTERN_KO } from "@/lib/fortune/items";
 import { josa } from "@/lib/fortune/daily";
 import { HeroSlot, GiftSlot } from "../Slots3D";
 import { Sheet } from "../Sheet";
-import { SockArt, CharmArt } from "../ItemArt";
+import { CharmArt } from "../ItemArt";
 import { IconChevron } from "../icons";
 import { useEnv } from "../env";
 
@@ -74,7 +74,6 @@ export default function Today({ date }: { date: string }) {
   const [detail, setDetail] = useState(false);
   const [why, setWhy] = useState(false);
   const [openAt, setOpenAt] = useState<number | null>(() => (getState().days[date]?.boxOpened ? 1 : null));
-  const [flying, setFlying] = useState<{ x: number; y: number; tx: number; ty: number } | null>(null);
   const [cat, setCat] = useState(0);
   const [basis, setBasis] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -111,12 +110,13 @@ export default function Today({ date }: { date: string }) {
     haptic(14);
     setOpenAt(performance.now());
     setState((s) => ({ ...s, days: { ...s.days, [date]: { ...s.days[date], boxOpened: true } } }));
+    // 수집함에 담겼다는 표시: 하단 수집함 탭이 통 튀고 짧은 토스트
     window.setTimeout(() => {
-      const from = giftRef.current?.getBoundingClientRect();
-      const to = document.querySelector('[data-nav="shelf"]')?.getBoundingClientRect();
-      if (from && to && motionLevel === "full")
-        setFlying({ x: from.left + from.width / 2, y: from.top + 160, tx: to.left + to.width / 2, ty: to.top + to.height / 2 });
-    }, 1500);
+      const nav = document.querySelector('[data-nav="shelf"]') as HTMLElement | null;
+      nav?.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 320, easing: "cubic-bezier(0.34,1.56,0.64,1)" });
+      setToast("수집함에 담았어요");
+      window.setTimeout(() => setToast(null), 1600);
+    }, 1700);
   };
 
   const copyHex = async (hex: string) => {
@@ -503,30 +503,7 @@ export default function Today({ date }: { date: string }) {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {flying && (
-          <motion.div
-            className="flyer"
-            initial={{ x: flying.x - 32, y: flying.y - 36, scale: 1, opacity: 1, rotate: 0 }}
-            animate={{
-              x: [flying.x - 32, (flying.x + flying.tx) / 2 - 32, flying.tx - 32],
-              y: [flying.y - 36, Math.min(flying.y, flying.ty) - 140, flying.ty - 36],
-              scale: [1, 0.8, 0.25],
-              rotate: [0, -20, 10],
-              opacity: [1, 1, 0],
-            }}
-            transition={{ duration: 0.8, ease: [0.5, 0, 0.3, 1], times: [0, 0.5, 1] }}
-            onAnimationComplete={() => {
-              setFlying(null);
-              haptic(10);
-              const nav = document.querySelector('[data-nav="shelf"]') as HTMLElement | null;
-              nav?.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 300, easing: "cubic-bezier(0.34,1.56,0.64,1)" });
-            }}
-          >
-            <SockArt spec={sock} size={64} shadow={false} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </div>
   );
 }
@@ -620,7 +597,6 @@ const css = `
 .dl-row span { color: var(--ink-3); }
 .dl-row b { font-weight: 700; text-align: right; }
 .detail-p { margin: 12px 0 0; font-size: 14px; line-height: 1.6; color: var(--ink-2); }
-.flyer { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; }
 @media (max-width: 359px) {
   .hero-score .num { font-size: 54px; }
   .hero-head { font-size: 17px; }

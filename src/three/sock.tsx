@@ -392,32 +392,25 @@ export function GiftBox({ spec, openAt, ribbonColor, boxColor }: { spec: SockSpe
         (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - e);
       }
     }
-    // ── 양말 두 짝 ──
+    // ── 양말 한 켤레: 상자 안에서 함께 떠오르며 살짝 시차를 두고 안착 ──
     if (a.current && b.current && pair.current) {
       const show = k >= 0.36;
       a.current.visible = b.current.visible = show;
       if (!show) return;
-      // 튀어나올 때 크게 출렁이고 서서히 잦아들어 가볍게 흔들리는 정도로
-      const since = openAt === 1 ? 9 : k - 0.36;
-      floppy.current.amp = 1.1 * Math.exp(-2.2 * since) + (live ? 0.07 : 0);
-      const up = spring(k - 0.36, 9, 0.42); // 솟구침
-      const settle = easeOut((k - 0.95) / 0.65); // 겹쳐 앉기
-      const sc = THREE.MathUtils.lerp(0.35, 1, clamp01(up * 1.05)) * shapeScale;
-      const fan = (1 - settle) * clamp01(up);
-      const lift = (1 - settle) * 0.55 * up;
-      const set = (g: THREE.Group, rest: typeof restA, side: number) => {
-        g.position.set(
-          (rest.p[0] + side * 0.3 * fan) * shapeScale,
-          -0.25 + (0.25 + rest.p[1] * shapeScale) * clamp01(up) + lift,
-          rest.p[2] * shapeScale,
-        );
-        g.rotation.set(rest.r[0], rest.r[1], rest.r[2] + side * -0.7 * fan + (1 - clamp01(up)) * side * 1.2);
-        g.scale.setScalar(sc);
+      const place = (g: THREE.Group, rest: typeof restA, delay: number, side: number) => {
+        const t = k - 0.36 - delay;
+        const up = spring(t, 8, 0.55); // 한 번만 살짝 넘쳤다 돌아오는 부드러운 스프링
+        const u = clamp01(up);
+        g.position.set(rest.p[0] * shapeScale, -0.3 + (0.3 + rest.p[1] * shapeScale) * up, rest.p[2] * shapeScale);
+        // 올라오는 동안만 아주 작게 기울었다가 제자리로
+        g.rotation.set(0, 0, rest.r[2] + side * 0.18 * (1 - u));
+        g.scale.setScalar(THREE.MathUtils.lerp(0.55, 1, u) * shapeScale);
       };
-      set(a.current, restA, 1);
-      set(b.current, restB, -1);
-      pair.current.position.y = live && settle >= 1 ? Math.sin(clock.elapsedTime * 1.3) * 0.02 : 0;
-      pair.current.rotation.z = live && settle >= 1 ? Math.sin(clock.elapsedTime * 0.9) * 0.02 : 0;
+      place(b.current, restB, 0, -1);
+      place(a.current, restA, 0.07, 1);
+      const since = openAt === 1 ? 9 : k - 0.36;
+      floppy.current.amp = 0.45 * Math.exp(-3 * since) + (live ? 0.04 : 0);
+      pair.current.position.y = live ? Math.sin(clock.elapsedTime * 1.2) * 0.015 : 0;
     }
   });
 
