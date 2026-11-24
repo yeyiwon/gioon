@@ -24,7 +24,7 @@ export default function Onboarding() {
     setDir(-1);
     setI(i - 1);
   };
-  const canNext = step === "date" ? valid : true;
+  const canNext = step === "date" || step === "time" ? valid : true;
 
   return (
     <div className="onb">

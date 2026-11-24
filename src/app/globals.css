@@ -551,3 +551,6 @@ select.input:disabled {
 .picker-opt:active { transform: scale(0.94); }
 .picker-opt[aria-selected="true"] { background: var(--ink); color: #fff; }
 @media (hover: hover) { .picker-opt:hover { background: var(--surface-2); } .picker-opt[aria-selected="true"]:hover { background: var(--ink); } }
+
+.big-input { font-size: 22px; font-weight: 800; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.big-input::placeholder { color: #b5b8c2; font-weight: 700; }

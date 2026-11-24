@@ -11,7 +11,7 @@ export const emptyDraft = (): Draft => ({
   name: "",
   gender: "none",
   // 빈 프로필로 시작한다 (연도 0 = 미입력, 날짜 단계에서 입력해야 다음으로 진행)
-  birth: { calendar: "solar", leapMonth: false, year: 0, month: 1, day: 1, hour: 12, minute: 0, regionId: "seoul" },
+  birth: { calendar: "solar", leapMonth: false, year: 0, month: 1, day: 1, hour: null, minute: null, regionId: "seoul" },
 });
 
 function Seg<T extends string>({ value, options, onChange, id }: { value: T; options: [T, string][]; onChange: (v: T) => void; id: string }) {
@@ -27,6 +27,9 @@ function Seg<T extends string>({ value, options, onChange, id }: { value: T; opt
   );
 }
 
+const fmtDate = (d: string) => (d.length > 6 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6)}` : d.length > 4 ? `${d.slice(0, 4)}.${d.slice(4)}` : d);
+const fmtTime = (d: string) => (d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d);
+
 export const STEPS = ["name", "date", "time", "place", "more"] as const;
 export type Step = (typeof STEPS)[number];
 
@@ -34,7 +37,12 @@ export type Step = (typeof STEPS)[number];
 export function StepFields({ step, draft, set }: { step: Step; draft: Draft; set: (d: Draft) => void }) {
   const b = draft.birth;
   const setB = (p: Partial<BirthInput>) => set({ ...draft, birth: { ...b, ...p } });
-  const [yearText, setYearText] = useState(b.year ? String(b.year) : "");
+  const [dateDigits, setDateDigits] = useState(
+    b.year ? `${b.year}${String(b.month).padStart(2, "0")}${String(b.day).padStart(2, "0")}` : "",
+  );
+  const [timeDigits, setTimeDigits] = useState(
+    b.hour !== null && b.hour >= 0 ? `${String(b.hour).padStart(2, "0")}${String(b.minute ?? 0).padStart(2, "0")}` : "",
+  );
 
   switch (step) {
     case "name":
@@ -66,31 +74,24 @@ export function StepFields({ step, draft, set }: { step: Step; draft: Draft; set
             ]}
             onChange={(v) => setB({ calendar: v, leapMonth: false })}
           />
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 8 }}>
-            <label className="field">
-              <span className="meta">년</span>
-              <input
-                className="input"
-                inputMode="numeric"
-                value={yearText}
-                placeholder="예: 1990"
-                onChange={(e) => {
-                  setYearText(e.target.value.replace(/\D/g, "").slice(0, 4));
-                  const y = parseInt(e.target.value, 10);
-                  if (y >= 1900 && y <= 2100) setB({ year: y });
-                }}
-                aria-label="출생 연도"
-              />
-            </label>
-            <div className="field">
-              <span className="meta">월</span>
-              <Picker label="출생 월" value={b.month} cols={4} onChange={(v) => setB({ month: v })} options={Array.from({ length: 12 }, (_, i) => ({ v: i + 1, l: `${i + 1}월` }))} />
-            </div>
-            <div className="field">
-              <span className="meta">일</span>
-              <Picker label="출생 일" value={b.day} cols={7} onChange={(v) => setB({ day: v })} options={Array.from({ length: b.calendar === "lunar" ? 30 : 31 }, (_, i) => ({ v: i + 1, l: `${i + 1}` }))} />
-            </div>
-          </div>
+          <label className="field">
+            <span className="meta">생년월일 8자리</span>
+            <input
+              className="input big-input"
+              inputMode="numeric"
+              autoComplete="bday"
+              placeholder="예: 19900101"
+              aria-label="생년월일 8자리"
+              value={fmtDate(dateDigits)}
+              onChange={(e) => {
+                const d = e.target.value.replace(/\D/g, "").slice(0, 8);
+                setDateDigits(d);
+                // 8자리가 다 들어와야 날짜로 인정 (그 전엔 연도 0 = 미완성)
+                if (d.length === 8) setB({ year: +d.slice(0, 4), month: +d.slice(4, 6), day: +d.slice(6, 8) });
+                else setB({ year: 0 });
+              }}
+            />
+          </label>
           <AnimatePresence initial={false}>
             {b.calendar === "lunar" && (
               <motion.label
@@ -120,30 +121,35 @@ export function StepFields({ step, draft, set }: { step: Step; draft: Draft; set
         </div>
       );
     case "time": {
-      const unknown = b.hour === null;
+      const partial = timeDigits.length > 0 && timeDigits.length < 4;
+      const bad = timeDigits.length === 4 && (+timeDigits.slice(0, 2) > 23 || +timeDigits.slice(2) > 59);
       return (
-        <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, opacity: unknown ? 0.35 : 1, transition: "opacity 200ms" }}>
-            <div className="field">
-              <span className="meta">시 (0–23)</span>
-              <Picker label="출생 시" value={b.hour ?? 9} cols={6} disabled={unknown} onChange={(v) => setB({ hour: v })} options={Array.from({ length: 24 }, (_, i) => ({ v: i, l: `${String(i).padStart(2, "0")}시` }))} />
-            </div>
-            <div className="field">
-              <span className="meta">분</span>
-              <Picker label="출생 분" value={b.minute ?? 0} cols={6} disabled={unknown} onChange={(v) => setB({ minute: v })} options={Array.from({ length: 60 }, (_, i) => ({ v: i, l: `${String(i).padStart(2, "0")}` }))} />
-            </div>
-          </div>
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={unknown}
-            onClick={() => setB(unknown ? { hour: 9, minute: 0 } : { hour: null, minute: null })}
-            style={{ justifySelf: "start" }}
-          >
-            태어난 시간을 몰라요
-          </button>
-          <p className="meta" style={{ margin: 0 }}>
-            시간을 모르면 시주(태어난 시의 기둥) 없이 해석해요. 나중에 설정에서 바꿀 수 있어요.
+        <div style={{ display: "grid", gap: 10 }}>
+          <label className="field">
+            <span className="meta">태어난 시각 4자리 (선택)</span>
+            <input
+              className="input big-input"
+              inputMode="numeric"
+              placeholder="예: 0830"
+              aria-label="태어난 시각 4자리"
+              value={fmtTime(timeDigits)}
+              onChange={(e) => {
+                const d = e.target.value.replace(/\D/g, "").slice(0, 4);
+                setTimeDigits(d);
+                if (d.length === 0) setB({ hour: null, minute: null });
+                else if (d.length === 4) setB({ hour: +d.slice(0, 2), minute: +d.slice(2) });
+                else setB({ hour: -1, minute: null }); // 입력 중 → 다음 단계 막기
+              }}
+            />
+          </label>
+          <p className="meta" style={{ margin: 0, color: partial || bad ? "#e0245e" : undefined, fontWeight: partial || bad ? 700 : 400 }}>
+            {bad
+              ? "00:00~23:59 사이로 입력해 주세요"
+              : partial
+                ? "4자리로 입력해 주세요 (예: 오후 2시 5분 → 1405)"
+                : timeDigits.length === 4
+                  ? "출생지 경도로 보정해 시주를 계산해요"
+                  : "모르면 비워 두세요. 시주(태어난 시의 기둥) 없이 계산해요"}
           </p>
         </div>
       );
@@ -204,8 +210,8 @@ export function useDraftCheck(draft: Draft) {
 
 export const STEP_COPY: Record<Step, { title: string; sub: string }> = {
   name: { title: "닉네임 (선택)", sub: "화면에만 표시돼요. 비워 둬도 괜찮아요" },
-  date: { title: "생년월일", sub: "양력·음력 중 아는 쪽으로 입력하세요" },
-  time: { title: "태어난 시간", sub: "모르면 건너뛸 수 있어요. 시주 없이 계산해요" },
+  date: { title: "생년월일", sub: "숫자 8자리로 입력하세요" },
+  time: { title: "태어난 시간", sub: "알면 입력하고, 모르면 비워 두세요" },
   place: { title: "태어난 지역", sub: "가장 가까운 도시를 고르세요" },
   more: { title: "성별 (선택)", sub: "지금은 운세 결과에 영향이 없어요" },
 };

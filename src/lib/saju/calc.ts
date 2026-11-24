@@ -149,6 +149,8 @@ export function computeChart(input: BirthInput, jasi: JasiRule = "split"): Chart
     if (check.getUTCMonth() !== date.m - 1 || check.getUTCDate() !== date.d) return null;
   }
   if (date.y < 1900 || date.y > 2100) return null;
+  // 시각을 입력 중이거나 범위를 벗어나면 계산하지 않는다
+  if (input.hour !== null && (input.hour < 0 || input.hour > 23 || input.minute === null || input.minute < 0 || input.minute > 59)) return null;
 
   const region = REGIONS.find((r) => r.id === input.regionId) ?? REGIONS[0];
   const known = input.hour !== null;
