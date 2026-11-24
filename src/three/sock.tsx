@@ -263,10 +263,7 @@ export function SockPair({ spec, lite }: { spec: SockSpec; lite?: boolean }) {
   );
 }
 
-/** 감쇠 스프링 (0→1, 살짝 지나쳤다가 안착) */
-const spring = (t: number, w = 11, z = 0.38) => (t <= 0 ? 0 : 1 - Math.exp(-z * w * t) * Math.cos(w * Math.sqrt(1 - z * z) * t));
 const clamp01 = (x: number) => Math.min(Math.max(x, 0), 1);
-const easeOut = (x: number) => 1 - Math.pow(1 - clamp01(x), 3);
 
 const CONF_COLORS = ["#ff5fa2", "#ffd23f", "#2f5bff", "#8ee04b", "#8b7cff", "#ff7a2f"];
 /** 상자 입구에서 터지는 3D 컨페티 (InstancedMesh 하나) */
@@ -318,120 +315,158 @@ function Confetti3D({ openAt, count = 44 }: { openAt: number | null; count?: num
   );
 }
 
+/** 뚜껑을 열면 안이 보이는 속이 빈 상자 (양말이 실제로 안에서 올라오도록) */
+function HollowBox({ color, ribbon }: { color: string; ribbon: string }) {
+  const W = 0.92, H = 0.56, T = 0.035;
+  const mat = <meshPhysicalMaterial color={color} roughness={0.38} clearcoat={0.5} />;
+  const inner = shade(color, 0.12);
+  return (
+    <group>
+      {/* 바닥 */}
+      <mesh position={[0, -H / 2 + T / 2, 0]}>
+        <boxGeometry args={[W, T, W]} />
+        {mat}
+      </mesh>
+      <mesh position={[0, -H / 2 + T + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[W - 2 * T, W - 2 * T]} />
+        <meshStandardMaterial color="#ffffff" roughness={1} />
+      </mesh>
+      {/* 네 벽 */}
+      {[-1, 1].map((d) => (
+        <mesh key={`fz${d}`} position={[0, 0, d * (W / 2 - T / 2)]}>
+          <boxGeometry args={[W, H, T]} />
+          {mat}
+        </mesh>
+      ))}
+      {[-1, 1].map((d) => (
+        <mesh key={`sx${d}`} position={[d * (W / 2 - T / 2), 0, 0]}>
+          <boxGeometry args={[T, H, W - 2 * T]} />
+          {mat}
+        </mesh>
+      ))}
+      {/* 안쪽 면은 조금 밝게 */}
+      {[-1, 1].map((d) => (
+        <mesh key={`in${d}`} position={[0, 0, d * (W / 2 - T - 0.001)]} rotation={[0, d > 0 ? Math.PI : 0, 0]}>
+          <planeGeometry args={[W - 2 * T, H - 0.01]} />
+          <meshStandardMaterial color={inner} roughness={0.9} />
+        </mesh>
+      ))}
+      {/* 리본 띠 (바깥면) */}
+      {[-1, 1].map((d) => (
+        <mesh key={`rz${d}`} position={[0, 0, d * (W / 2 + 0.004)]}>
+          <boxGeometry args={[0.14, H + 0.006, 0.008]} />
+          <meshPhysicalMaterial color={ribbon} roughness={0.5} sheen={1} sheenColor="#ffffff" />
+        </mesh>
+      ))}
+      {[-1, 1].map((d) => (
+        <mesh key={`rx${d}`} position={[d * (W / 2 + 0.004), 0, 0]}>
+          <boxGeometry args={[0.008, H + 0.006, 0.14]} />
+          <meshPhysicalMaterial color={ribbon} roughness={0.5} sheen={1} sheenColor="#ffffff" />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+const smooth = (x: number) => {
+  const t = clamp01(x);
+  return t * t * (3 - 2 * t);
+};
+
 /**
- * 선물 상자 개봉 연출 (초 단위, openAt 기준)
- *  0.00–0.32  상자가 웅크리며 떨린다 (기대감)
- *  0.32       뚜껑이 회전하며 튀어 오르고, 빛 고리와 컨페티가 터진다
- *  0.36–0.95  양말 두 짝이 부채꼴로 벌어지며 솟아오른다
- *  0.95–1.6   두 짝이 한 켤레로 겹쳐 내려앉고, 상자는 아래로 작아지며 사라진다
- * openAt === 1 은 이미 열린 상태(연출 없이 결과만)
+ * 선물 상자 개봉 연출 (초, openAt 기준)
+ *  0.00–0.22  상자가 살짝 웅크렸다 펴짐
+ *  0.22–0.70  뚜껑이 위로 들렸다가 뒤로 기울며 사라짐 · 빛 고리와 컨페티
+ *  0.40–1.10  상자 안에서 양말 한 켤레가 위로 솟아오름 (상자 크기에 맞춰 작게)
+ *  1.05–1.65  상자는 아래로 내려가며 작아지고, 양말은 화면 가운데로 와서 원래 크기로
+ * openAt === 1 은 이미 열린 상태
  */
 export function GiftBox({ spec, openAt, ribbonColor, boxColor }: { spec: SockSpec; openAt: number | null; ribbonColor: string; boxColor: string }) {
   const lid = useRef<THREE.Group>(null);
   const box = useRef<THREE.Group>(null);
   const ring = useRef<THREE.Mesh>(null);
-  const a = useRef<THREE.Group>(null);
-  const b = useRef<THREE.Group>(null);
   const pair = useRef<THREE.Group>(null);
   const floppy = useRef<Floppy>({ amp: 0 });
   const { motion } = useQuality();
-  const shapeScale = (spec.shape === "knee" ? 0.8 : spec.shape === "ankle" ? 1.15 : 1) * 1.25;
-  // 최종 한 켤레 배치 (SockPair와 같은 자세)
-  const restA = { p: [0.2, 0.07, -0.16], r: [0, 0, -0.1] };
-  const restB = { p: [-0.06, -0.03, 0.06], r: [0, 0, 0.04] };
+  const finalScale = (spec.shape === "knee" ? 0.8 : spec.shape === "ankle" ? 1.15 : 1) * 1.25;
+  // 상자 입구(폭 0.85)를 통과할 수 있는 크기
+  const insideScale = finalScale * 0.48;
 
   useFrame(({ clock }) => {
-    const k = openAt === null ? -1 : openAt === 1 ? 9 : (performance.now() - openAt) / 1000;
+    const dbg = process.env.NODE_ENV !== "production" ? (window as unknown as { __giftT?: number }).__giftT : undefined;
+    const k = dbg ?? (openAt === null ? -1 : openAt === 1 ? 9 : (performance.now() - openAt) / 1000);
     const live = motion === "full";
-    // ── 상자 ──
+
     if (box.current && lid.current) {
       if (k < 0) {
         const w = live ? clock.elapsedTime % 3.2 : 9;
-        const hop = w < 0.5 ? Math.sin((w / 0.5) * Math.PI) : 0;
+        const hop = w < 0.45 ? Math.sin((w / 0.45) * Math.PI) : 0;
         box.current.visible = true;
-        box.current.position.set(0, -0.32 + hop * 0.03, 0);
-        box.current.rotation.set(0, 0, hop * 0.03);
+        box.current.position.set(0, -0.32 + hop * 0.025, 0);
+        box.current.rotation.set(0, 0, hop * 0.02);
         box.current.scale.set(1, 1, 1);
         lid.current.visible = true;
-        lid.current.position.set(0, 0.36 + hop * 0.04, 0);
+        lid.current.position.set(0, 0.36, 0);
         lid.current.rotation.set(0, 0, 0);
         lid.current.scale.setScalar(1);
-      } else if (k < 0.32) {
-        // 웅크림 + 떨림
-        const q = k / 0.32;
-        const shake = Math.sin(k * 70) * 0.05 * q;
-        box.current.scale.set(1 + 0.08 * q, 1 - 0.18 * q, 1 + 0.08 * q);
-        box.current.rotation.set(0, 0, shake);
-        box.current.position.y = -0.32 - 0.05 * q;
-        lid.current.position.set(0, 0.36, 0);
       } else {
-        const t = k - 0.32;
-        // 튕겨 오르는 반동 후 1초 뒤부터 아래로 작아지며 퇴장
-        const rebound = 1 - spring(t, 18, 0.3);
-        const out = easeOut((k - 0.95) / 0.6);
-        const sc = (1 - out) * 1;
-        box.current.scale.set(sc * (1 - 0.08 * rebound), sc * (1 + 0.18 * rebound), sc * (1 - 0.08 * rebound));
+        // 웅크림 → 펴짐
+        const sq = k < 0.22 ? Math.sin((k / 0.22) * Math.PI) : 0;
+        // 퇴장
+        const out = smooth((k - 1.05) / 0.6);
+        const sc = 1 - out;
+        box.current.scale.set(sc * (1 + 0.05 * sq), sc * (1 - 0.1 * sq), sc * (1 + 0.05 * sq));
+        box.current.position.set(0, -0.32 - 0.45 * out, 0);
         box.current.rotation.set(0, 0, 0);
-        box.current.position.y = -0.32 - 0.35 * out;
         box.current.visible = out < 1;
-        // 뚜껑: 회전하며 포물선으로 날아감
-        lid.current.position.set(-0.9 * t, 0.36 + 2.2 * t - 3.2 * t * t, -0.5 * t);
-        lid.current.rotation.set(-3.2 * t, 0.6 * t, 4.0 * t);
-        lid.current.scale.setScalar(Math.max(0.0001, 1 - clamp01((t - 0.35) / 0.35)));
-        lid.current.visible = t < 0.72;
+        // 뚜껑: 똑바로 툭 들렸다가 뒤로 젖혀지며 화면 위로 빠져나감 (크기는 그대로)
+        const lift = smooth((k - 0.22) / 0.2);
+        const away = clamp01((k - 0.4) / 0.4);
+        const awayE = away * away;
+        lid.current.position.set(0.15 * awayE, 0.36 + 0.3 * lift + 1.9 * awayE, -0.9 * awayE);
+        lid.current.rotation.set(-1.4 * awayE, 0.3 * awayE, 0.25 * awayE);
+        lid.current.scale.setScalar(1);
+        lid.current.visible = away < 1;
       }
     }
-    // ── 빛 고리 ──
     if (ring.current) {
-      const t = k - 0.32;
-      const on = openAt !== 1 && t > 0 && t < 0.55;
+      const t = k - 0.3;
+      const on = openAt !== 1 && dbg === undefined && t > 0 && t < 0.5;
       ring.current.visible = on;
       if (on) {
-        const e = easeOut(t / 0.55);
-        ring.current.scale.setScalar(0.3 + e * 1.6);
-        (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - e);
+        const e = 1 - Math.pow(1 - t / 0.5, 3);
+        ring.current.scale.setScalar(0.4 + e * 1.4);
+        (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - e);
       }
     }
-    // ── 양말 한 켤레: 상자 안에서 함께 떠오르며 살짝 시차를 두고 안착 ──
-    if (a.current && b.current && pair.current) {
-      const show = k >= 0.36;
-      a.current.visible = b.current.visible = show;
+    if (pair.current) {
+      const show = k >= 0.4;
+      pair.current.visible = show;
       if (!show) return;
-      const place = (g: THREE.Group, rest: typeof restA, delay: number, side: number) => {
-        const t = k - 0.36 - delay;
-        const up = spring(t, 8, 0.55); // 한 번만 살짝 넘쳤다 돌아오는 부드러운 스프링
-        const u = clamp01(up);
-        g.position.set(rest.p[0] * shapeScale, -0.3 + (0.3 + rest.p[1] * shapeScale) * up, rest.p[2] * shapeScale);
-        // 올라오는 동안만 아주 작게 기울었다가 제자리로
-        g.rotation.set(0, 0, rest.r[2] + side * 0.18 * (1 - u));
-        g.scale.setScalar(THREE.MathUtils.lerp(0.55, 1, u) * shapeScale);
-      };
-      place(b.current, restB, 0, -1);
-      place(a.current, restA, 0.07, 1);
-      const since = openAt === 1 ? 9 : k - 0.36;
-      floppy.current.amp = 0.45 * Math.exp(-3 * since) + (live ? 0.04 : 0);
-      pair.current.position.y = live ? Math.sin(clock.elapsedTime * 1.2) * 0.015 : 0;
+      // 1) 상자 안(바닥)에서 입구 위로
+      const rise = 1 - Math.pow(1 - clamp01((k - 0.4) / 0.7), 3);
+      const yInside = -0.62 + rise * 0.95; // -0.62(상자 속) → 0.33(입구 위)
+      // 2) 가운데로 내려와 원래 크기로
+      const settle = smooth((k - 1.05) / 0.6);
+      const y = THREE.MathUtils.lerp(yInside, 0.02, settle);
+      const sc = THREE.MathUtils.lerp(insideScale, finalScale, settle);
+      const bob = live && settle >= 1 ? Math.sin(clock.elapsedTime * 1.2) * 0.015 : 0;
+      pair.current.position.set(0, y + bob, 0);
+      pair.current.scale.setScalar(sc);
+      // 솟아오를 때만 아주 살짝 기울었다가 바로 섬
+      pair.current.rotation.set(0, 0, (1 - rise) * 0.12);
+      const since = openAt === 1 ? 9 : k - 0.4;
+      floppy.current.amp = 0.35 * Math.exp(-2.6 * Math.max(since, 0)) + (live ? 0.035 : 0);
     }
   });
 
-  const kraft = boxColor;
   return (
     <group>
       <group ref={box} position={[0, -0.32, 0]}>
-        <RoundedBox args={[0.92, 0.56, 0.92]} radius={0.05} smoothness={4}>
-          <meshPhysicalMaterial color={kraft} roughness={0.35} clearcoat={0.6} />
-        </RoundedBox>
-        <mesh position={[0, 0.281, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[0.8, 0.8]} />
-          <meshStandardMaterial color="#ffffff" roughness={1} />
-        </mesh>
-        <mesh>
-          <boxGeometry args={[0.14, 0.565, 0.925]} />
-          <meshPhysicalMaterial color={ribbonColor} roughness={0.5} sheen={1} sheenColor="#ffffff" />
-        </mesh>
+        <HollowBox color={boxColor} ribbon={ribbonColor} />
         <group ref={lid} position={[0, 0.36, 0]}>
           <RoundedBox args={[0.98, 0.16, 0.98]} radius={0.04} smoothness={4}>
-            <meshPhysicalMaterial color={shade(kraft, 0.04)} roughness={0.35} clearcoat={0.6} />
+            <meshPhysicalMaterial color={shade(boxColor, 0.04)} roughness={0.38} clearcoat={0.5} />
           </RoundedBox>
           <mesh>
             <boxGeometry args={[0.14, 0.168, 0.985]} />
@@ -458,12 +493,15 @@ export function GiftBox({ spec, openAt, ribbonColor, boxColor }: { spec: SockSpe
         <meshBasicMaterial color="#ffffff" transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
       <Confetti3D openAt={openAt} />
-      <group ref={pair}>
-        <group ref={a} visible={false}>
+      <group ref={pair} visible={false}>
+        {/* 두 짝을 합친 폭의 가운데가 원점에 오도록 */}
+        <group position={[-0.065, 0, 0]}>
+        <group position={[0.2, 0.07, -0.16]} rotation={[0, 0, -0.1]}>
           <OneSock spec={spec} floppy={floppy} phase={0} />
         </group>
-        <group ref={b} visible={false}>
+        <group position={[-0.06, -0.03, 0.06]} rotation={[0, 0, 0.04]}>
           <OneSock spec={spec} floppy={floppy} phase={1.7} />
+        </group>
         </group>
       </group>
     </group>

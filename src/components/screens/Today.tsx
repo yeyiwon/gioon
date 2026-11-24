@@ -334,7 +334,7 @@ export default function Today({ date }: { date: string }) {
               <span className="meta">{openAt ? "수집함에 저장됨" : "상자를 눌러 열기"}</span>
             </div>
             <div className="gift-stage">
-              <GiftSlot spec={sock} ribbon="#ff5fa2" box={el.color} openAt={openAt} onTap={openBox} className="gift-3d" />
+              <GiftSlot spec={sock} ribbon="#ff5fa2" box="#fbfbfd" openAt={openAt} onTap={openBox} className="gift-3d" />
             </div>
             {!openAt ? (
               <button className="btn btn-primary gift-cta" onClick={getState().days[date]?.boxOpened ? undefined : openBox} disabled={!!getState().days[date]?.boxOpened}>
