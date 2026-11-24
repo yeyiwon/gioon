@@ -27,6 +27,7 @@ import { REGIONS } from "@/lib/saju/calc";
 import { CharacterSlot } from "../Slots3D";
 import { CompatSection } from "../Compat";
 import { timeLabel } from "../ProfileForm";
+import { findSinsal, SINSAL_CHECKED } from "@/lib/saju/sinsal";
 import { SHAPES, CountUp } from "./Today";
 import { Sheet } from "../Sheet";
 import { useEnv } from "../env";
@@ -69,6 +70,7 @@ export default function MyChart() {
   ];
   const b = profile.birth;
   const region = REGIONS.find((r) => r.id === b.regionId)?.name;
+  const sinsal = findSinsal(chart);
   const dominant = [...ELEMENTS].sort((x, y) => share[y] - share[x])[0];
   const cur: Element = sel ?? dominant;
   const groupOf = (e: Element) => (["비겁", "식상", "재성", "관성", "인성"] as TenGodGroup[]).find((g) => groupElement(a.dayElement, g) === e)!;
@@ -155,6 +157,44 @@ export default function MyChart() {
               </motion.div>
             ))}
           </div>
+        </section>
+
+        <section className="section sinsal">
+          <div className="section-head">
+            <h2 className="section-title">나의 신살</h2>
+            <span className="meta">귀인과 특별한 기운</span>
+          </div>
+          {sinsal.length === 0 ? (
+            <p className="secondary" style={{ margin: 0 }}>
+              대표 신살 {SINSAL_CHECKED.length}가지 중 원국에 해당하는 게 없어요. 치우침이 적은 편이에요.
+            </p>
+          ) : (
+            <ul className="ss-list">
+              {sinsal.map((x, i) => (
+                <motion.li
+                  key={x.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.05, duration: 0.3 }}
+                >
+                  <div className="ss-top">
+                    <b>{x.name}</b>
+                    <span className="ss-hanja">{x.hanja}</span>
+                    <span className="ss-kind" data-kind={x.kind}>
+                      {x.kind}
+                    </span>
+                    <span className="ss-where">{x.where.join("·")}주</span>
+                  </div>
+                  <p className="ss-plain">{x.plain}</p>
+                  <p className="ss-tip">{x.tip}</p>
+                </motion.li>
+              ))}
+            </ul>
+          )}
+          <p className="meta" style={{ margin: "10px 0 0" }}>
+            신살은 길흉을 단정하지 않고 타고난 기질과 경향을 보는 참고용이에요.
+          </p>
         </section>
 
         <section className="section balance">
@@ -361,6 +401,17 @@ const css = `
 .tile-g[data-me="true"] .han { color: #fff; }
 .tile-g[data-me="true"] small { color: rgba(255,255,255,0.7); }
 .tile-empty { flex: 1; display: grid; place-items: center; border-radius: 18px; border: 2px dashed var(--line-2); font-size: 12px; color: var(--ink-3); min-height: 160px; }
+.ss-list { list-style: none; margin: 0; padding: 0; }
+.ss-list li { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.ss-list li:first-child { padding-top: 4px; }
+.ss-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ss-top b { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+.ss-hanja { font-size: 12px; color: var(--ink-3); font-weight: 600; }
+.ss-kind { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--surface); color: var(--ink-2); }
+.ss-kind[data-kind="귀인"] { background: var(--el); color: var(--el-on); }
+.ss-where { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--ink-3); }
+.ss-plain { margin: 6px 0 0; font-size: 15px; font-weight: 600; }
+.ss-tip { margin: 2px 0 0; font-size: 13px; color: var(--ink-3); }
 .stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; }
 .stack i { display: block; min-width: 2px; }
 .el-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 12px; }
@@ -397,7 +448,7 @@ const css = `
 .hidden-list .han { font-size: 22px; font-weight: 800; }
 @media (min-width: 900px) {
   .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
-  .dm, .pillars, .traits, .notes, .compat { grid-column: 1; }
+  .dm, .pillars, .sinsal, .traits, .notes, .compat { grid-column: 1; }
   .balance { grid-column: 2; grid-row: 1 / span 4; margin-top: 8px; }
   .el-stage { height: 340px; }
 }

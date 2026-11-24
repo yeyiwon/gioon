@@ -1,5 +1,6 @@
 import { dayPillarOf, type Chart, type Pillar } from "../saju/calc";
 import { analyze, pillarsOf, type Analysis } from "../saju/analysis";
+import { isCheoneulDay } from "../saju/sinsal";
 import {
   ELEMENTS,
   ELEMENT_INFO,
@@ -91,6 +92,8 @@ export interface DailyFortune {
   total: number;
   /** 점수 산출 근거 */
   basis: { label: string; effect: string }[];
+  /** 오늘 일진이 내 천을귀인 자리 */
+  guiin: boolean;
   colors: LuckyColor[];
   detail: string[];
   scores: { key: "love" | "money" | "work" | "people"; label: string; level: number; note: string }[];
@@ -264,13 +267,15 @@ export function computeDaily(chart: Chart, profileKey: string, y: number, m: num
   });
 
   const avg = scores.reduce((x, y) => x + y.level, 0) / scores.length;
-  const total = Math.max(35, Math.min(98, Math.round(30 + avg * 13 + tone * 8 + (harmony.length ? 3 : 0) - (clash.length ? 3 : 0))));
+  const guiin = isCheoneulDay(dayStem, p.branch);
+  const total = Math.max(35, Math.min(98, Math.round(30 + avg * 13 + tone * 8 + (harmony.length ? 3 : 0) - (clash.length ? 3 : 0) + (guiin ? 4 : 0))));
 
   const detail: string[] = [
     `오늘의 천간 ${p.stem}(${STEM_KO[p.stem]})${josa(STEM_KO[p.stem], "은", "는").slice(1)} 내 일간 기준 ‘${tg}’${josa(tg, "이에요", "예요").slice(tg.length)}. ${TG_COPY[tg].flow}`,
   ];
   if (harmony.length) detail.push(`${harmony.join("·")}의 글자와 오늘이 합(合)을 이뤄요. 약속·협업이 잘 풀리기 쉬워요.`);
   if (clash.length) detail.push(`${clash.join("·")}의 글자와 오늘이 충(沖)으로 부딪혀요. 일정 변경이 생기기 쉬우니 여유를 두세요.`);
+  if (guiin) detail.push("오늘은 내 천을귀인(天乙貴人) 자리가 들어오는 날이에요. 도움을 청하거나 사람을 만나기 좋아요.");
   if (overloaded) detail.push(`${ELEMENT_INFO[overloaded].short}의 기운이 넘치기 쉬운 날이라, 같은 색·음식을 더하기보다 다른 기운으로 균형을 맞추는 게 좋아요.`);
 
   // ── 아이템 ──
@@ -297,6 +302,7 @@ export function computeDaily(chart: Chart, profileKey: string, y: number, m: num
     { label: "오늘 기운과 내 사주", effect: tone > 0 ? "반가운 기운 (+)" : tone < 0 ? "넘치는 기운 (−)" : "보통" },
     { label: "지지 합", effect: harmony.length ? `${harmony.join("·")} (+)` : "없음" },
     { label: "지지 충", effect: clash.length ? `${clash.join("·")} (−)` : "없음" },
+    { label: "천을귀인 날", effect: guiin ? "해당 (+)" : "아님" },
   ];
 
   let charm: CharmKind = CHARM_BY_ELEMENT[need];
@@ -318,6 +324,7 @@ export function computeDaily(chart: Chart, profileKey: string, y: number, m: num
     flow: TG_COPY[tg].flow,
     total,
     basis,
+    guiin,
     colors,
     detail,
     scores,

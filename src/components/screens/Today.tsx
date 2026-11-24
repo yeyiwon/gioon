@@ -182,6 +182,11 @@ export default function Today({ date }: { date: string }) {
             <motion.h1 className="hero-head" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: t0 + 0.15, duration: 0.35, ease }}>
               {f.headline}
             </motion.h1>
+            {f.guiin && (
+              <motion.span className="guiin" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: t0 + 0.3, type: "spring", stiffness: 500, damping: 18 }}>
+                천을귀인 날
+              </motion.span>
+            )}
           </div>
           <HeroSlot element={devElement() ?? f.need} introStart={introStart} className="hero-3d" style={{ position: "absolute" }} onTap={() => haptic()} />
           <div className="hero-info">
@@ -516,6 +521,7 @@ const css = `
 .hero-score { margin: 2px 0 0; display: flex; align-items: baseline; gap: 2px; line-height: 1; color: inherit; text-align: left; }
 .hero-score .num { font-size: 64px; }
 .hero-score > span:last-child { font-size: 20px; font-weight: 800; }
+.guiin { display: inline-flex; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 800; }
 .hero-head { font-size: 19px; font-weight: 800; line-height: 1.3; letter-spacing: -0.03em; margin: 10px 0 0; }
 .hero-3d { right: 0; top: 0; width: 48%; height: 236px; }
 .hero-info { position: relative; z-index: 1; margin-top: auto; padding-top: 14px; display: grid; grid-template-columns: 1fr 1px 1fr; gap: 14px; border-top: 1.5px solid rgba(17,18,22,0.08); }

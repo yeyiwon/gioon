@@ -4,6 +4,7 @@ import { analyze } from "../saju/analysis";
 import { BRANCHES, STEMS } from "../saju/constants";
 import { computeDaily } from "../fortune/daily";
 import { compatibility } from "../fortune/compat";
+import { findSinsal } from "../saju/sinsal";
 
 const birth = (o: Partial<BirthInput>): BirthInput => ({
   calendar: "solar", leapMonth: false, year: 2000, month: 1, day: 1, hour: 12, minute: 0, regionId: "seoul", ...o,
@@ -131,5 +132,24 @@ describe("궁합", () => {
     }
     const x = compatibility(me, analyze(me), other!, analyze(other!), "partner");
     expect(x.basis).toContain("일간 천간합");
+  });
+});
+
+describe("신살", () => {
+  it("2000-01-01 12:00 서울(己卯 丙子 戊午 戊午): 도화살(년·월), 양인살(일·시)", () => {
+    const s = findSinsal(computeChart(birth({}))!);
+    expect(s.map((x) => [x.name, x.where.join("")])).toEqual([
+      ["도화살", "년월"],
+      ["양인살", "일시"],
+    ]);
+  });
+  it("甲일간에 丑·未가 있으면 천을귀인", () => {
+    // 甲일 + 丑월을 가진 날짜 찾기 (1월 초는 丑월)
+    let found = null;
+    for (let d = 6; d <= 30 && !found; d++) {
+      const c = computeChart(birth({ year: 2001, month: 1, day: d }))!;
+      if (c.day.stem === "甲" && c.month.branch === "丑") found = c;
+    }
+    expect(findSinsal(found!).some((x) => x.name === "천을귀인" && x.where.includes("월"))).toBe(true);
   });
 });
