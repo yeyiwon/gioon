@@ -554,3 +554,14 @@ select.input:disabled {
 
 .big-input { font-size: 22px; font-weight: 800; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
 .big-input::placeholder { color: #b5b8c2; font-weight: 700; }
+
+/* 시진 선택 */
+.sj-unknown { min-height: 52px; border-radius: 14px; background: var(--surface); font-size: 16px; font-weight: 700; transition: background-color 120ms var(--ease), transform 120ms var(--ease); }
+.sj-unknown[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.sj-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.sj { min-height: 60px; border-radius: 14px; background: var(--surface); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 14px; text-align: left; transition: background-color 120ms var(--ease), transform 120ms var(--ease); }
+.sj b { font-size: 15px; font-weight: 800; white-space: nowrap; }
+.sj small { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.sj[aria-checked="true"] { background: var(--ink); color: #fff; }
+.sj[aria-checked="true"] small { color: rgba(255,255,255,0.7); }
+.sj:active, .sj-unknown:active { transform: scale(0.96); }

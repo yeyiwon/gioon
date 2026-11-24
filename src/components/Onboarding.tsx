@@ -24,7 +24,8 @@ export default function Onboarding() {
     setDir(-1);
     setI(i - 1);
   };
-  const canNext = step === "date" || step === "time" ? valid : true;
+  // 시간 단계는 시진·정확한 시각·모름 중 하나를 직접 골라야 넘어간다 (기본 선택 없음)
+  const canNext = step === "date" ? valid : step === "time" ? valid && !!draft.birth.timeMode : true;
 
   return (
     <div className="onb">

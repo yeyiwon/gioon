@@ -27,13 +27,12 @@ export const profileKey = (p: Profile) => `${p.createdAt}`;
 
 export function useChart() {
   const profile = useAppState((s) => s.profile);
-  const jasi = useAppState((s) => s.settings.jasi);
   return useMemo(() => {
     if (!profile) return null;
-    const chart = computeChart(profile.birth, jasi);
+    const chart = computeChart(profile.birth);
     if (!chart) return null;
     return { profile, chart, analysis: analyze(chart) };
-  }, [profile, jasi]);
+  }, [profile]);
 }
 
 export function useFortune(date: string) {
@@ -54,16 +53,15 @@ function subscribeMQ(q: string) {
 }
 const reducedSub = subscribeMQ("(prefers-reduced-motion: reduce)");
 
-/** 설정값과 OS 설정을 함께 본 모션 수준 */
+/** OS의 '동작 줄이기' 설정을 따른 모션 수준 */
 export function useMotionLevel(): "full" | "reduced" | "static" {
-  const pref = useAppState((s) => s.settings.motion);
   const osReduced = useSyncExternalStore(
     reducedSub,
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     () => false,
   );
-  if (pref === "static") return "static";
-  if (pref === "reduced" || osReduced) return "reduced";
+  // 3D 끄기 설정은 없앴다. 저사양·WebGL 미지원은 detectTier가, 움직임 줄이기는 OS 설정이 처리
+  if (osReduced) return "reduced";
   return "full";
 }
 

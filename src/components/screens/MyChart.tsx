@@ -26,6 +26,7 @@ import {
 import { REGIONS } from "@/lib/saju/calc";
 import { CharacterSlot } from "../Slots3D";
 import { CompatSection } from "../Compat";
+import { timeLabel } from "../ProfileForm";
 import { SHAPES, CountUp } from "./Today";
 import { Sheet } from "../Sheet";
 import { useEnv } from "../env";
@@ -82,7 +83,7 @@ export default function MyChart() {
         <span className="meta">
           {b.calendar === "lunar" ? `음력${b.leapMonth ? "(윤)" : ""} ` : ""}
           {b.year}.{b.month}.{b.day}
-          {b.hour !== null ? ` ${String(b.hour).padStart(2, "0")}:${String(b.minute ?? 0).padStart(2, "0")}` : " 시간 모름"} · {region}
+ {timeLabel(b)} · {region}
         </span>
       </header>
 

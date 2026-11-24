@@ -1,15 +1,10 @@
 "use client";
 import { useState } from "react";
-import { getState, resetAll, setState, useAppState, type MotionPref } from "@/lib/store";
-import type { JasiRule } from "@/lib/saju/calc";
+import { getState, resetAll, setState, useAppState } from "@/lib/store";
 import { Sheet } from "../Sheet";
 import { IconChevron } from "../icons";
-import { STEPS, STEP_COPY, StepFields, useDraftCheck, type Draft } from "../ProfileForm";
+import { STEPS, STEP_COPY, StepFields, timeLabel, useDraftCheck, type Draft } from "../ProfileForm";
 import { useEnv } from "../env";
-
-function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
-  return <button role="switch" aria-checked={on} aria-label={label} className="toggle" onClick={() => onChange(!on)} />;
-}
 
 function ProfileEditor({ onDone }: { onDone: () => void }) {
   const p = getState().profile!;
@@ -42,34 +37,8 @@ function ProfileEditor({ onDone }: { onDone: () => void }) {
 
 export default function Settings() {
   const { go } = useEnv();
-  const settings = useAppState((s) => s.settings);
   const profile = useAppState((s) => s.profile);
   const [sheet, setSheet] = useState<null | "profile" | "about" | "reset">(null);
-  const [notifyMsg, setNotifyMsg] = useState("");
-  const set = (patch: Partial<typeof settings>) => setState((s) => ({ ...s, settings: { ...s.settings, ...patch } }));
-
-  const toggleNotify = async (on: boolean) => {
-    if (!on) return set({ notify: false });
-    if (!("Notification" in window)) {
-      setNotifyMsg("이 브라우저는 알림을 지원하지 않아요");
-      return;
-    }
-    const perm = await Notification.requestPermission();
-    if (perm === "granted") {
-      set({ notify: true });
-      setNotifyMsg("");
-    } else setNotifyMsg("브라우저 설정에서 알림이 꺼져 있어요");
-  };
-
-  const MOTION: [MotionPref, string, string][] = [
-    ["auto", "기기 설정 따르기", "3D와 모션을 모두 보여 줘요"],
-    ["reduced", "움직임 줄이기", "3D는 멈춘 채로, 만질 때만 움직여요"],
-    ["static", "3D 끄기", "가벼운 그림으로 바꿔 배터리를 아껴요"],
-  ];
-  const JASI: [JasiRule, string][] = [
-    ["split", "23시부터 다음 날 (기본)"],
-    ["unified", "0시부터 다음 날 (야자시)"],
-  ];
 
   return (
     <div className="screen settings">
@@ -91,7 +60,7 @@ export default function Settings() {
             <span className="meta" style={{ display: "block" }}>
               {profile?.birth.calendar === "lunar" ? "음력 " : ""}
               {profile?.birth.year}.{profile?.birth.month}.{profile?.birth.day}
-              {profile?.birth.hour !== null ? ` ${String(profile?.birth.hour).padStart(2, "0")}:${String(profile?.birth.minute ?? 0).padStart(2, "0")}` : " · 시간 모름"}
+              {profile ? ` · ${timeLabel(profile.birth)}` : ""}
             </span>
           </span>
           <span className="muted">수정</span>
@@ -100,50 +69,7 @@ export default function Settings() {
       </section>
 
       <section className="set-group">
-        <h2 className="set-label">모션과 3D</h2>
-        {MOTION.map(([v, l, d]) => (
-          <button key={v} className="row set-row" role="radio" aria-checked={settings.motion === v} onClick={() => set({ motion: v })}>
-            <span style={{ flex: 1, textAlign: "left" }}>
-              {l}
-              <span className="meta" style={{ display: "block" }}>
-                {d}
-              </span>
-            </span>
-            <span className="radio" data-on={settings.motion === v} />
-          </button>
-        ))}
-      </section>
-
-      <section className="set-group">
-        <h2 className="set-label">알림</h2>
-        <div className="row">
-          <span style={{ flex: 1 }}>
-            아침 알림
-            <span className="meta" style={{ display: "block" }}>
-              {notifyMsg || "알림 권한만 저장돼요. 예약 발송은 다음 버전에서 지원해요"}
-            </span>
-          </span>
-          <Toggle on={settings.notify} onChange={toggleNotify} label="아침 알림" />
-        </div>
-        {settings.notify && (
-          <label className="row">
-            <span style={{ flex: 1 }}>알림 시각</span>
-            <input type="time" className="input" style={{ width: 120, minHeight: 44 }} value={settings.notifyTime} onChange={(e) => set({ notifyTime: e.target.value })} />
-          </label>
-        )}
-      </section>
-
-      <section className="set-group">
-        <h2 className="set-label">해석 기준</h2>
-        <p className="meta" style={{ margin: "0 0 8px" }}>
-          자시(23–01시) 출생의 일주 경계
-        </p>
-        {JASI.map(([v, l]) => (
-          <button key={v} className="row set-row" role="radio" aria-checked={settings.jasi === v} onClick={() => set({ jasi: v })}>
-            <span style={{ flex: 1, textAlign: "left" }}>{l}</span>
-            <span className="radio" data-on={settings.jasi === v} />
-          </button>
-        ))}
+        <h2 className="set-label">안내</h2>
         <button className="row set-row" onClick={() => setSheet("about")}>
           <span style={{ flex: 1, textAlign: "left" }}>사주 해석 기준 안내</span>
           <IconChevron size={16} className="muted" />

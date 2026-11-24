@@ -14,6 +14,8 @@ export interface BirthInput {
   /** null = 출생 시간 모름 */
   hour: number | null;
   minute: number | null;
+  /** 입력 방식: 시진(2시간 단위) 선택 · 정확한 시각 · 모름. 없으면 아직 고르지 않은 상태 */
+  timeMode?: "sijin" | "exact" | "unknown";
   regionId: string;
   /** regionId === "abroad" 일 때 UTC 오프셋(분) */
   utcOffsetMin?: number;

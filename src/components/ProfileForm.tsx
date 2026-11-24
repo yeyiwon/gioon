@@ -28,6 +28,32 @@ function Seg<T extends string>({ value, options, onChange, id }: { value: T; opt
 }
 
 const fmtDate = (d: string) => (d.length > 6 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6)}` : d.length > 4 ? `${d.slice(0, 4)}.${d.slice(4)}` : d);
+/** 시진: 한국 표준시 기준 30분 경계. 대표 시각은 구간 한가운데(지방시 보정 ±40분에도 같은 시진) */
+export const SIJIN = [
+  { name: "자시", animal: "쥐", range: "밤 11:30 ~ 1:30", h: 0 },
+  { name: "축시", animal: "소", range: "새벽 1:30 ~ 3:30", h: 2 },
+  { name: "인시", animal: "호랑이", range: "새벽 3:30 ~ 5:30", h: 4 },
+  { name: "묘시", animal: "토끼", range: "아침 5:30 ~ 7:30", h: 6 },
+  { name: "진시", animal: "용", range: "아침 7:30 ~ 9:30", h: 8 },
+  { name: "사시", animal: "뱀", range: "오전 9:30 ~ 11:30", h: 10 },
+  { name: "오시", animal: "말", range: "낮 11:30 ~ 1:30", h: 12 },
+  { name: "미시", animal: "양", range: "오후 1:30 ~ 3:30", h: 14 },
+  { name: "신시", animal: "원숭이", range: "오후 3:30 ~ 5:30", h: 16 },
+  { name: "유시", animal: "닭", range: "저녁 5:30 ~ 7:30", h: 18 },
+  { name: "술시", animal: "개", range: "저녁 7:30 ~ 9:30", h: 20 },
+  { name: "해시", animal: "돼지", range: "밤 9:30 ~ 11:30", h: 22 },
+];
+
+/** 프로필에 표시할 태어난 시간 */
+export function timeLabel(b: BirthInput) {
+  if (b.hour === null || b.hour < 0) return "시간 모름";
+  if (b.timeMode === "sijin") {
+    const sj = SIJIN.find((x) => x.h === b.hour);
+    if (sj) return `${sj.name}(${sj.range})`;
+  }
+  return `${String(b.hour).padStart(2, "0")}:${String(b.minute ?? 0).padStart(2, "0")}`;
+}
+
 const fmtTime = (d: string) => (d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d);
 
 export const STEPS = ["name", "date", "time", "place", "more"] as const;
@@ -41,7 +67,7 @@ export function StepFields({ step, draft, set }: { step: Step; draft: Draft; set
     b.year ? `${b.year}${String(b.month).padStart(2, "0")}${String(b.day).padStart(2, "0")}` : "",
   );
   const [timeDigits, setTimeDigits] = useState(
-    b.hour !== null && b.hour >= 0 ? `${String(b.hour).padStart(2, "0")}${String(b.minute ?? 0).padStart(2, "0")}` : "",
+    b.timeMode === "exact" && b.hour !== null && b.hour >= 0 ? `${String(b.hour).padStart(2, "0")}${String(b.minute ?? 0).padStart(2, "0")}` : "",
   );
 
   switch (step) {
@@ -121,36 +147,59 @@ export function StepFields({ step, draft, set }: { step: Step; draft: Draft; set
         </div>
       );
     case "time": {
+      const mode = b.timeMode ?? (b.hour === null ? undefined : "exact");
       const partial = timeDigits.length > 0 && timeDigits.length < 4;
       const bad = timeDigits.length === 4 && (+timeDigits.slice(0, 2) > 23 || +timeDigits.slice(2) > 59);
       return (
         <div style={{ display: "grid", gap: 10 }}>
-          <label className="field">
-            <span className="meta">태어난 시각 4자리 (선택)</span>
-            <input
-              className="input big-input"
-              inputMode="numeric"
-              placeholder="예: 0830"
-              aria-label="태어난 시각 4자리"
-              value={fmtTime(timeDigits)}
-              onChange={(e) => {
-                const d = e.target.value.replace(/\D/g, "").slice(0, 4);
-                setTimeDigits(d);
-                if (d.length === 0) setB({ hour: null, minute: null });
-                else if (d.length === 4) setB({ hour: +d.slice(0, 2), minute: +d.slice(2) });
-                else setB({ hour: -1, minute: null }); // 입력 중 → 다음 단계 막기
-              }}
-            />
-          </label>
-          <p className="meta" style={{ margin: 0, color: partial || bad ? "#e0245e" : undefined, fontWeight: partial || bad ? 700 : 400 }}>
-            {bad
-              ? "00:00~23:59 사이로 입력해 주세요"
-              : partial
-                ? "4자리로 입력해 주세요 (예: 오후 2시 5분 → 1405)"
-                : timeDigits.length === 4
-                  ? "출생지 경도로 보정해 시주를 계산해요"
-                  : "모르면 비워 두세요. 시주(태어난 시의 기둥) 없이 계산해요"}
-          </p>
+          <button type="button" className="sj-unknown" aria-pressed={mode === "unknown"} onClick={() => setB({ timeMode: "unknown", hour: null, minute: null })}>
+            태어난 시간을 몰라요
+          </button>
+          <div className="sj-grid" role="radiogroup" aria-label="태어난 시간대">
+            {SIJIN.map((sj) => (
+              <button
+                key={sj.name}
+                type="button"
+                role="radio"
+                className="sj"
+                aria-checked={mode === "sijin" && b.hour === sj.h}
+                onClick={() => setB({ timeMode: "sijin", hour: sj.h, minute: 30 })}
+              >
+                <b>{sj.range}</b>
+                <small>
+                  {sj.name} · {sj.animal}
+                </small>
+              </button>
+            ))}
+          </div>
+          {mode !== "exact" ? (
+            <button type="button" className="btn-text" style={{ justifySelf: "start" }} onClick={() => setB({ timeMode: "exact", hour: -1, minute: null })}>
+              정확한 시각을 알아요
+            </button>
+          ) : (
+            <div className="field">
+              <span className="meta">정확한 시각 (24시간, 4자리)</span>
+              <input
+                className="input big-input"
+                inputMode="numeric"
+                placeholder="예: 오후 2시 5분 → 1405"
+                aria-label="태어난 시각 4자리"
+                autoFocus
+                value={fmtTime(timeDigits)}
+                onChange={(e) => {
+                  const d = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  setTimeDigits(d);
+                  if (d.length === 4) setB({ timeMode: "exact", hour: +d.slice(0, 2), minute: +d.slice(2) });
+                  else setB({ timeMode: "exact", hour: -1, minute: null }); // 입력 중 → 다음 단계 막기
+                }}
+              />
+              {(partial || bad) && (
+                <span className="meta" style={{ color: "#e0245e", fontWeight: 700 }}>
+                  {bad ? "00:00~23:59 사이로 입력해 주세요" : "4자리로 입력해 주세요"}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       );
     }
@@ -211,7 +260,7 @@ export function useDraftCheck(draft: Draft) {
 export const STEP_COPY: Record<Step, { title: string; sub: string }> = {
   name: { title: "닉네임 (선택)", sub: "화면에만 표시돼요. 비워 둬도 괜찮아요" },
   date: { title: "생년월일", sub: "숫자 8자리로 입력하세요" },
-  time: { title: "태어난 시간", sub: "알면 입력하고, 모르면 비워 두세요" },
+  time: { title: "태어난 시간", sub: "대략 어느 시간대였는지 골라 주세요" },
   place: { title: "태어난 지역", sub: "가장 가까운 도시를 고르세요" },
   more: { title: "성별 (선택)", sub: "지금은 운세 결과에 영향이 없어요" },
 };
