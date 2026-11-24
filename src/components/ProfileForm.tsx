@@ -172,7 +172,6 @@ export function StepFields({ step, draft, set }: { step: Step; draft: Draft; set
       return (
         <div style={{ display: "grid", gap: 16 }}>
           <div className="field">
-            <span className="meta">태어난 시각</span>
             <div className="tm">
               <div className="seg tm-ampm" role="group" aria-label="오전 오후">
                 {(["am", "pm"] as const).map((v) => (

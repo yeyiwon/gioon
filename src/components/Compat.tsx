@@ -174,7 +174,10 @@ export function CompatSection() {
                 </div>
               </div>
               <StepFields step="date" draft={draft} set={setDraft} />
-              <StepFields step="time" draft={draft} set={setDraft} />
+              <div className="field">
+                <span className="meta">태어난 시각 (선택)</span>
+                <StepFields step="time" draft={draft} set={setDraft} />
+              </div>
               <button className="btn btn-primary" style={{ width: "100%", margin: "8px 0 12px" }} disabled={!valid} onClick={save}>
                 궁합 보기
               </button>
