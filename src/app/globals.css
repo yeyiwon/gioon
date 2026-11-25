@@ -560,3 +560,18 @@ select.input:disabled {
 .tm-field span { position: absolute; right: 14px; top: 50%; translate: 0 -50%; font-size: 15px; font-weight: 700; color: var(--ink-3); pointer-events: none; }
 .picker-btn[data-empty="true"] { color: var(--ink-3); font-weight: 600; }
 .picker-grid[style*="repeat(1"] .picker-opt { text-align: left; padding: 0 16px; font-weight: 600; }
+
+/* 날씨 칩 */
+.wx-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 4px 12px 4px 6px; border-radius: 999px; background: var(--surface); color: var(--ink); transition: transform 120ms var(--ease); }
+.wx-chip:active { transform: scale(0.95); }
+.wx-skel { width: 104px; height: 44px; }
+.wx-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+.wx-text b { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.wx-text small { font-size: 11px; font-weight: 600; color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wx-spin { animation: wx-spin 18s linear infinite; }
+.wx-drop { animation: wx-drop 1.2s ease-in infinite; }
+.wx-flash { animation: wx-flash 2.4s ease-in-out infinite; }
+@keyframes wx-spin { to { transform: rotate(360deg); } }
+@keyframes wx-drop { 0% { transform: translateY(-2px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(4px); opacity: 0; } }
+@keyframes wx-flash { 0%, 70%, 100% { opacity: 1; } 78%, 90% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .wx-spin, .wx-drop, .wx-flash { animation: none; } }

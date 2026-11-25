@@ -25,7 +25,8 @@ export default function Onboarding() {
     setI(i - 1);
   };
   // 시간 단계는 시진·정확한 시각·모름 중 하나를 직접 골라야 넘어간다 (기본 선택 없음)
-  const canNext = step === "date" ? valid : step === "time" ? valid && !!draft.birth.timeMode : true;
+  // 출생지도 미리 골라 두지 않는다: 직접 고르거나 '모름'을 선택해야 넘어감
+  const canNext = step === "date" ? valid : step === "time" ? valid && !!draft.birth.timeMode : step === "place" ? !!draft.birth.regionId : true;
 
   return (
     <div className="onb">

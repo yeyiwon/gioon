@@ -11,6 +11,7 @@ import { Sheet } from "../Sheet";
 import { CharmArt } from "../ItemArt";
 import { IconChevron } from "../icons";
 import { useEnv } from "../env";
+import { WeatherChip } from "../Weather";
 
 // 개발 중 오행별 3D 확인용: ?el=fire (프로덕션 빌드에선 무시)
 const devElement = () =>
@@ -159,6 +160,7 @@ export default function Today({ date }: { date: string }) {
             {f.pillar.branch})
           </p>
         </div>
+        <WeatherChip />
       </header>
 
       <div className="today-grid">

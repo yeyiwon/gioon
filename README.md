@@ -20,6 +20,7 @@ npm run build
 | `src/lib/saju/` | 만세력 계산(lunar-javascript), 표준시·서머타임·경도 보정, 오행 분석 |
 | `src/lib/fortune/` | 일진 기반 하루 운세, 점수 근거, 행운 컬러·아이템 (날짜+프로필로 결정적) |
 | `src/lib/store.ts` | localStorage 저장 (프로필·기록·설정) |
+| `src/lib/weather.ts` | 오늘 날씨 (Open-Meteo, 키 불필요). 기본 서울, '내 위치'는 좌표를 약 1km 단위로 반올림해 기기에만 저장 |
 | `src/three/` | 단일 WebGL 캔버스(drei View 공유), 오행 마스코트, 양말·선물 상자 |
 | `src/components/` | 화면(오늘·사주·달력·수집함·설정), 온보딩, 바텀시트 |
 

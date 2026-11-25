@@ -82,11 +82,13 @@ export default function MyChart() {
         <h1 className="h-lg" style={{ margin: 0 }}>
           나의 사주
         </h1>
-        <span className="meta">
-          {b.calendar === "lunar" ? `음력${b.leapMonth ? "(윤)" : ""} ` : ""}
-          {b.year}.{b.month}.{b.day}
- {timeLabel(b)} · {region}
-        </span>
+        <div className="birth-chips">
+          <span className="pill">
+            {b.calendar === "lunar" ? `음력${b.leapMonth ? "(윤)" : ""}` : "양력"} {b.year}.{String(b.month).padStart(2, "0")}.{String(b.day).padStart(2, "0")}
+          </span>
+          <span className="pill">{timeLabel(b)}</span>
+          <span className="pill">{b.regionId === "unknown" ? "출생지 모름" : `${region} 출생`}</span>
+        </div>
       </header>
 
       <div className="chart-grid">
@@ -384,7 +386,9 @@ export default function MyChart() {
 }
 
 const css = `
-.chart .topbar { flex-wrap: wrap; gap: 0 12px; }
+.chart .topbar { flex-direction: column; align-items: flex-start; gap: 8px; padding: 8px 0 4px; }
+.birth-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.birth-chips .pill { font-variant-numeric: tabular-nums; }
 .dm { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; margin-top: 8px; padding: 16px; border-radius: var(--r-lg); background: var(--surface); }
 .dm-glyph { width: 88px; height: 88px; border-radius: 26px; display: grid; place-items: center; font-size: 52px; font-weight: 800; }
 .dm-image { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; margin: 2px 0 6px; }

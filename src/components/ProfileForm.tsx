@@ -11,7 +11,7 @@ export const emptyDraft = (): Draft => ({
   name: "",
   gender: "none",
   // 빈 프로필로 시작한다 (연도 0 = 미입력, 날짜 단계에서 입력해야 다음으로 진행)
-  birth: { calendar: "solar", leapMonth: false, year: 0, month: 1, day: 1, hour: null, minute: null, regionId: "seoul" },
+  birth: { calendar: "solar", leapMonth: false, year: 0, month: 1, day: 1, hour: null, minute: null, regionId: "" },
 });
 
 function Seg<T extends string>({ value, options, onChange, id }: { value: T; options: [T, string][]; onChange: (v: T) => void; id: string }) {
